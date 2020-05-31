@@ -6,28 +6,43 @@ if($_SERVER["REQUEST_METHOD"]=="POST") {
     if(!empty($email) && !empty($password)) {
 
         include_once("lib/compressor.php");
+        //
+        if(strlen($password)<8)
+        {
+            $error="Пароль закороткий";
+        }
+        else {
+            include_once("connection_database.php");
+            $error = "";
+            $sql = "SELECT id FROM tbl_users AS u WHERE u.email=?LIMIT 1";
+            $stmt = $dbh->prepare($sql);
+            $stmt->execute([$email]);
+            if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $error = "Це пошта вже зареєстрована. Спробуйте увійти.";
+            }
+            if ($error == "") {
+                $uploaddir = $_SERVER['DOCUMENT_ROOT'] . '/upload/';
+                $file_name = uniqid('100_') . '.jpg';
+                $file_save_path = $uploaddir . $file_name;
+                my_image_resize(100, 100, $file_save_path, 'image');
 
-        $uploaddir = $_SERVER['DOCUMENT_ROOT'].'/upload/';
-        $file_name= uniqid('100_').'.jpg';
-        $file_save_path=$uploaddir.$file_name;
 
-        my_image_resize(100, 100, $file_save_path, 'image');
+                include_once("connection_database.php");
+
+                $sql = "INSERT INTO `tbl_users` (`email`, `password`, `image`) VALUES (?, ?, ?);";
+                $stmt = $dbh->prepare($sql);
+                $stmt->execute([$email, $password, $file_name]);
+                header("Location: index.php");
+                exit();
+            }
+
+            //my_image_resize(100, 100, $file_save_path, 'image');
 //        if (move_uploaded_file($_FILES['image']['tmp_name'], $file_save_path)) {
 //            echo "Файл корректен и был успешно загружен.\n";
 //        } else {
 //            echo "Возможная атака с помощью файловой загрузки!\n";
 //        }
-
-
-
-       include_once("connection_database.php");
-
-        $sql = "INSERT INTO `tbl_users` (`email`, `password`, `image`) VALUES (?, ?, ?);";
-        $stmt= $dbh->prepare($sql);
-        $stmt->execute([$email, $password, $file_name]);
-
-        header("Location: index.php");
-        exit();
+        }
     }
 }
 ?>
@@ -63,32 +78,22 @@ if($_SERVER["REQUEST_METHOD"]=="POST") {
         <form method="post" class="offset-3 col-6" enctype="multipart/form-data">
             <div class="form-group">
                 <label for="exampleInputEmail1">Email address</label>
-                <input type="email" class="form-control"
-                       id="exampleInputEmail1"
-                       aria-describedby="emailHelp"
-                       name="txt_email"
-                       placeholder="Enter email">
+                <input type="email" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp" name="txt_email" placeholder="Enter email">
 
             </div>
             <div class="form-group">
-                <label for="exampleInputPassword1">Password</label>
-                <input type="password" class="form-control"
-                       name="txt_password"
-                       id="exampleInputPassword1" placeholder="Password">
-            </div>
 
+                <label for="exampleInputPassword1">Password</label>
+                <input type="password" class="form-control" name="txt_password" id="exampleInputPassword1" placeholder="Password">
+            </div>
             <div>
                 <img id="valera" src="">
             </div>
 
 
             <div class="form-group">
-                <input type="file" class="form-control"
-
-                       name="image"
-                       id="image">
+                <input type="file" class="form-control" name="image" id="image">
             </div>
-
             <div class="form-check">
                 <input type="checkbox" class="form-check-input" id="exampleCheck1">
                 <label class="form-check-label" for="exampleCheck1">Check me out</label>
@@ -105,10 +110,13 @@ if($_SERVER["REQUEST_METHOD"]=="POST") {
 
 <?php include("scripts.php"); ?>
 <script src="node_modules/cropperjs/dist/cropper.min.js"></script>
+<script>
+    $(function(){
 
+    })
+</script>
 <script>
     $(function() {
-
         let dialogCropper = $("#cropperModal");
         $("#image").on("change", function() {
             //console.log("----select file------", this.files);
@@ -124,7 +132,6 @@ if($_SERVER["REQUEST_METHOD"]=="POST") {
 
                 }
                 reader.readAsDataURL(file);
-
             }
         });
 
